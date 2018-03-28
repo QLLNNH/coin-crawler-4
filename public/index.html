@@ -279,7 +279,7 @@
 
             if (multiple !== 0 && _multiple > multiple) {
                 const ts = new Date(Date.now() - zone).toISOString().substring(11, 19);
-                const word = `${ts} ${symbol} ${Number(interval)}min 增长${_multiple}倍`;
+                const word = `${ts} ${symbol} ${_time}min 增长${_multiple}倍`;
                 print_log(word);
             }
         }
