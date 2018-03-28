@@ -1,0 +1,22 @@
+{
+  "name": "coin-crawler-5.1",
+  "version": "1.0.0",
+  "description": "coin-crawler-5.1",
+  "main": "index.js",
+  "dependencies": {
+    "express": "4.16.3",
+    "socket.io": "2.0.4"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": "9.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "author": "NNH",
+  "license": "MIT"
+}

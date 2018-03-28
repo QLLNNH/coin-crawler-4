@@ -1,0 +1,14 @@
+# nodejs
+node_modules
+
+# webstorm
+.idea
+
+# nohup
+nohup.out
+
+# mac
+.DS_Store
+
+# compress
+*.zip
