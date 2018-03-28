@@ -3,12 +3,40 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>My Coin</title>
+    <title>coin-crawler-5.1</title>
     <style type="text/css">
         #outer {
-            width: 800px;
+            width: 1200px;
             height: 100%;
             margin: 0 auto;
+        }
+
+        #left {
+            width: 68%;
+            height: 100%;
+            float: left;
+        }
+
+        #right {
+            width: 30%;
+            height: 100%;
+            float: right;
+            margin-top: 59px;
+            margin-left: 10px;
+        }
+
+        #user-input {
+            margin: 5px 0px;
+        }
+
+        #user-input .input {
+            width: 100px;
+            height: 20px;
+        }
+
+        #user-input .button {
+            width: 50px;
+            height: 20px;
         }
 
         #symbols {
@@ -24,7 +52,7 @@
         }
 
         #symbols th {
-            width: 12%;
+            width: 11%;
             font-size: 1.1em;
             text-align: left;
             background-color: #A7C942;
@@ -32,8 +60,12 @@
             text-align: center;
         }
 
+        #symbols #price {
+            width: 20%;
+        }
+
         #symbols #ts {
-            width: 16%;
+            width: 14%;
         }
 
         #symbols td {
@@ -55,31 +87,61 @@
         #online_amount {
             display: inline-block;
         }
+
+        #log {
+            width: 98%;
+            height: 1000px;
+            border: 2px solid #98bf21;
+            margin-top: 5px;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+            float: left;
+        }
+
+        #log samp {
+            width: 100%;
+            display: inline-block;
+            padding: 4px 10px;
+        }
     </style>
 </head>
 <body>
 <div id="outer">
-    <div id="online">在线人数：</div>
-    <div id="online_amount"></div>
-    <table id="symbols">
-        <tr id="platform">
-            <th id="interval">
-                <select id="select">
-                    <option selected="selected" value="05">5min</option>
-                    <option value="10">10min</option>
-                    <option value="15">15min</option>
-                    <option value="30">30min</option>
-                </select>
-            </th>
-            <th id="">价格</th>
-            <th id="">BTC</th>
-            <th id="">ETH</th>
-            <th id="">BNB</th>
-            <th id="">USDT</th>
-            <th id="">总额</th>
-            <th id="ts">时间</th>
-        </tr>
-    </table>
+    <div id="left">
+        <div>
+            <div id="online">在线人数：</div>
+            <div id="online_amount"></div>
+        </div>
+        <div id="user-input">
+            <input id="time" type="text" class="input" value="" autocomplete="off" placeholder="时间 2-30 整数"/>
+            <input id="multiple" type="text" class="input" value="" autocomplete="off" placeholder="倍数"/>
+            <input id="begin" type="button" class="button" value="开始"/>
+            <input id="log_clear" type="button" class="button" value="清除"/>
+        </div>
+        <table id="symbols">
+            <tr id="platform">
+                <th id="interval">
+                    <select id="select">
+                        <option selected="selected" value="05">5min</option>
+                        <option value="10">10min</option>
+                        <option value="15">15min</option>
+                        <option value="30">30min</option>
+                    </select>
+                </th>
+                <th id="price">价格</th>
+                <th id="">BTC</th>
+                <th id="">ETH</th>
+                <th id="">BNB</th>
+                <th id="">USDT</th>
+                <th id="">总额</th>
+                <th id="ts">时间</th>
+            </tr>
+        </table>
+    </div>
+    <div id="right">
+        <div id="log" scrolling="auto"></div>
+    </div>
 </div>
 </body>
 </html>
@@ -89,13 +151,17 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     $(document).ready(() => {
+        let time = 2;
+        let multiple = 0;
+        let interval = '05';
+
         const zone = new Date().getTimezoneOffset() * 60 * 1000;
         const socket = io();
+        socket.emit('load_cache', interval);
 
         socket.on('online', (amount) => $("#online_amount").text(amount));
 
         socket.on('kline', (kline) => {
-            console.log(kline.total);
             const symbol = kline.symbol;
             const target = kline[interval];
             const rank_old = rank.get_ranking(symbol);
@@ -112,6 +178,8 @@
             rank.set_ranking(symbol, rank_new);
             sequence.fetch_next(rank_new).forEach((symbol) => rank.increase(symbol));
             $(`#symbols tr`).eq(rank_new).after(`<tr class="symbol ${symbol}"><td>${target[0]}</td><td>${target[7]}</td><td>${target[1]}</td><td>${target[2]}</td><td>${target[3]}</td><td>${target[4]}</td><td>${target[5]}</td><td>${display_date}</td></tr>`);
+
+            handler_log(symbol, kline.total);
         });
 
         socket.on('load_cache', (rows) => {
@@ -183,12 +251,59 @@
             }
         }();
 
-        let interval = '05';
-        socket.emit('load_cache', interval);
-
         $("#select").change(function () {
             interval = $(this).val();
             socket.emit('load_cache', interval);
+        });
+
+        function handler_log(symbol, total) {
+            total = total.slice(30 - time);
+
+            let _time = time / 2, sum_head = 0, sum_tail = 0;
+
+            total.forEach((item, index) => {
+                if (index < _time) sum_head += item;
+                else sum_tail += item;
+            });
+
+            if (sum_head === 0) return undefined;
+
+            const _multiple = Number((sum_tail / sum_head).toFixed(1));
+
+            if (multiple !== 0 && _multiple > multiple) {
+                const ts = new Date(Date.now() - zone).toISOString().substring(11, 19);
+                const word = `${ts} ${symbol} ${Number(interval)}min 增长${_multiple}倍`;
+                print_log(word);
+            }
+        }
+
+        $("#begin").click(() => {
+            // time handler
+            {
+                const _time = Math.floor($("#time").val());
+                if (isNaN(_time)) alert('时间范围[2-30]之间的整数');
+                else if (_time < 2) time = 2;
+                else if (_time > 30) time = 30;
+                else if ((_time % 2) === 1) time = _time + 1;
+                else time = _time;
+                $("#time").val(time);
+            }
+
+            // multiple handler
+            {
+                const _multiple = Math.floor($("#multiple").val());
+                if (isNaN(_multiple)) alert('倍数应为整数');
+                multiple = _multiple;
+                $("#multiple").val(multiple);
+            }
+        });
+
+        function print_log(word) {
+            $("#log").prepend(`<samp>${word}</samp>`);
+        }
+
+        $("#log_clear").on('click', function () {
+            $("#log samp").remove();
         });
     });
 </script>
