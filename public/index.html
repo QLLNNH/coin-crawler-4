@@ -6,13 +6,13 @@
     <title>coin-crawler-5.1</title>
     <style type="text/css">
         #outer {
-            width: 1100px;
+            width: 1200px;
             height: 100%;
             margin: 0 auto;
         }
 
         #left {
-            width: 760px;
+            width: 860px;
             height: 100%;
             float: left;
         }
@@ -68,7 +68,7 @@
         }
 
         #symbols th {
-            width: 11%;
+            width: 10%;
             font-size: 1.1em;
             text-align: left;
             background-color: #A7C942;
@@ -77,11 +77,11 @@
         }
 
         #symbols #price {
-            width: 20%;
+            width: 18%;
         }
 
         #symbols #ts {
-            width: 14%;
+            width: 12%;
         }
 
         #symbols td {
@@ -123,6 +123,7 @@
             <div id="online_amount"></div>
             <input id="time" type="text" class="input" value="" autocomplete="off" placeholder="时间 2-30 整数"/>
             <input id="multiple" type="text" class="input" value="" autocomplete="off" placeholder="倍数"/>
+            <input id="btc_24h" type="text" class="input" value="" autocomplete="off" placeholder="24h"/>
             <input id="begin" type="button" class="button" value="开始"/>
             <input id="log_clear" type="button" class="button" value="清除"/>
         </div>
@@ -142,6 +143,7 @@
                 <th id="">BNB</th>
                 <th id="">USDT</th>
                 <th id="">总额</th>
+                <th id="">24H</th>
                 <th id="ts">时间</th>
             </tr>
         </table>
@@ -159,6 +161,7 @@
 <script>
     $(document).ready(() => {
         let time = 2;
+        let btc_24h = 0;
         let multiple = 0;
         let interval = '05';
 
@@ -184,9 +187,9 @@
             const rank_new = sequence.insert(target);
             rank.set_ranking(symbol, rank_new);
             sequence.fetch_next(rank_new).forEach((symbol) => rank.increase(symbol));
-            $(`#symbols tr`).eq(rank_new).after(`<tr class="symbol ${symbol}"><td>${target[0]}</td><td>${target[7]}</td><td>${target[1]}</td><td>${target[2]}</td><td>${target[3]}</td><td>${target[4]}</td><td>${target[5]}</td><td>${display_date}</td></tr>`);
+            $(`#symbols tr`).eq(rank_new).after(`<tr class="symbol ${symbol}"><td>${target[0]}</td><td>${target[7]}</td><td>${target[1]}</td><td>${target[2]}</td><td>${target[3]}</td><td>${target[4]}</td><td>${target[5]}</td><td>${target[8]}</td><td>${display_date}</td></tr>`);
 
-            handler_log(symbol, kline.total);
+            handler_log(symbol, kline.total, target[8]);
         });
 
         socket.on('load_cache', (rows) => {
@@ -196,7 +199,7 @@
             rows.forEach((row, index) => {
                 cache[row[0]] = index;
                 const display_date = new Date(row[6] - zone).toISOString().substring(11, 19);
-                $('#symbols').append(`<tr class="symbol ${row[0]}"><td>${row[0]}</td><td>${row[7]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td>${display_date}</td></tr>`)
+                $('#symbols').append(`<tr class="symbol ${row[0]}"><td>${row[0]}</td><td>${row[7]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td>${row[8]}</td><td>${display_date}</td></tr>`)
             });
             rank.init(cache);
         });
@@ -263,7 +266,7 @@
             socket.emit('load_cache', interval);
         });
 
-        function handler_log(symbol, total) {
+        function handler_log(symbol, total, _btc_24h) {
             total = total.slice(30 - time);
 
             let _time = time / 2, sum_head = 0, sum_tail = 0;
@@ -277,15 +280,15 @@
 
             const _multiple = Number((sum_tail / sum_head).toFixed(1));
 
-            if (multiple !== 0 && _multiple > multiple) {
+            if (multiple !== 0 && _multiple > multiple && _btc_24h > btc_24h) {
                 console.log('开始处理日志');
                 console.log(`每分钟交易额数据 -> ${total.join(', ')}`);
                 console.log(`前${_time}分钟交易总量 -> ${sum_head}`);
                 console.log(`后${_time}分钟交易总量 -> ${sum_tail}`);
                 console.log(`算出倍数 -> ${_multiple}`);
                 const ts = new Date(Date.now() - zone).toISOString().substring(11, 19);
-                const word = `${ts} ${symbol} ${_time}min 增长${_multiple}倍`;
-                print_log(word);
+                const word = `${ts} ${symbol} ${_time}min 增长${_multiple}倍    ${_btc_24h}`;
+                $("#log").prepend(`<samp>${word}</samp>`);
             }
         }
 
@@ -304,18 +307,30 @@
             // multiple handler
             {
                 const _multiple = Math.floor($("#multiple").val());
-                if (isNaN(_multiple)) alert('倍数应为整数');
-                multiple = _multiple;
-                $("#multiple").val(multiple);
+                if (isNaN(_multiple)) {
+                    alert('倍数必须是整数');
+                    $("#multiple").val(0);
+                }
+                else {
+                    multiple = _multiple;
+                    $("#multiple").val(multiple);
+                }
+            }
+
+            // 24h
+            {
+                const _btc_24h = Math.floor($("#btc_24h").val());
+                if (isNaN(_btc_24h)) {
+                    alert('24H必须是数字');
+                    $("#btc_24h").val(0);
+                }
+                else {
+                    btc_24h = _btc_24h;
+                    $("#btc_24h").val(btc_24h);
+                }
             }
         });
 
-        function print_log(word) {
-            $("#log").prepend(`<samp>${word}</samp>`);
-        }
-
-        $("#log_clear").on('click', function () {
-            $("#log samp").remove();
-        });
+        $("#log_clear").on('click', () => $("#log samp").remove());
     });
 </script>
