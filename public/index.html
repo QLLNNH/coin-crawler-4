@@ -340,14 +340,14 @@
 
             // 高低差百分比
             {
-                const _btc_hl_percent = Number($("#btc_hl_percent").val().toFixed(1));
+                const _btc_hl_percent = Number($("#btc_hl_percent").val());
                 if (isNaN(_btc_hl_percent)) {
                     alert('高低百分比必须是数字');
                     $("#btc_hl_percent").val(0);
                 }
                 else {
                     btc_hl_percent = _btc_hl_percent;
-                    $("#btc_hl_percent").val(_btc_hl_percent);
+                    $("#btc_hl_percent").val(_btc_hl_percent.toFixed(1));
                 }
             }
         });
