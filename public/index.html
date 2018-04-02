@@ -124,6 +124,7 @@
             <input id="time" type="text" class="input" value="" autocomplete="off" placeholder="时间 2-30 整数"/>
             <input id="multiple" type="text" class="input" value="" autocomplete="off" placeholder="倍数"/>
             <input id="btc_24h" type="text" class="input" value="" autocomplete="off" placeholder="24h"/>
+            <input id="btc_hl_percent" type="text" class="input" value="" autocomplete="off" placeholder="高低百分比"/>
             <input id="begin" type="button" class="button" value="开始"/>
             <input id="log_clear" type="button" class="button" value="清除"/>
         </div>
@@ -163,6 +164,7 @@
         let time = 2;
         let btc_24h = 0;
         let multiple = 0;
+        let btc_hl_percent = 0;
         let interval = '05';
 
         const zone = new Date().getTimezoneOffset() * 60 * 1000;
@@ -189,7 +191,7 @@
             sequence.fetch_next(rank_new).forEach((symbol) => rank.increase(symbol));
             $(`#symbols tr`).eq(rank_new).after(`<tr class="symbol ${symbol}"><td>${target[0]}</td><td>${target[7]}</td><td>${target[1]}</td><td>${target[2]}</td><td>${target[3]}</td><td>${target[4]}</td><td>${target[5]}</td><td>${target[8]}</td><td>${display_date}</td></tr>`);
 
-            handler_log(symbol, kline.total, target[8]);
+            handler_log(symbol, kline.btc_low, kline.btc_close, target[8]);
         });
 
         socket.on('load_cache', (rows) => {
@@ -266,12 +268,12 @@
             socket.emit('load_cache', interval);
         });
 
-        function handler_log(symbol, total, _btc_24h) {
-            total = total.slice(30 - time);
+        function handler_log(symbol, btc_low, btc_close, _btc_24h) {
+            const btc_close_slice = btc_close.slice(30 - time);
 
             let _time = time / 2, sum_head = 0, sum_tail = 0;
 
-            total.forEach((item, index) => {
+            btc_close_slice.forEach((item, index) => {
                 if (index < _time) sum_head += item;
                 else sum_tail += item;
             });
@@ -280,9 +282,15 @@
 
             const _multiple = Number((sum_tail / sum_head).toFixed(1));
 
-            if (multiple !== 0 && _multiple > multiple && _btc_24h > btc_24h) {
+            if (
+                multiple !== 0
+                && _multiple > multiple
+                && _btc_24h > btc_24h
+                && btc_low[30 - time] > btc_hl_percent
+            ) {
                 console.log('开始处理日志');
-                console.log(`每分钟交易额数据 -> ${total.join(', ')}`);
+                console.log(`高低差额百分比 -> ${btc_low[30 - time]}`);
+                console.log(`每分钟交易额 -> ${btc_close_slice.join(', ')}`);
                 console.log(`前${_time}分钟交易总量 -> ${sum_head}`);
                 console.log(`后${_time}分钟交易总量 -> ${sum_tail}`);
                 console.log(`算出倍数 -> ${_multiple}`);
@@ -326,7 +334,20 @@
                 }
                 else {
                     btc_24h = _btc_24h;
-                    $("#btc_24h").val(btc_24h);
+                    $("#btc_24h").val(_btc_24h);
+                }
+            }
+
+            // 高低差百分比
+            {
+                const _btc_hl_percent = Number($("#btc_hl_percent").val().toFixed(1));
+                if (isNaN(_btc_hl_percent)) {
+                    alert('高低百分比必须是数字');
+                    $("#btc_hl_percent").val(0);
+                }
+                else {
+                    btc_hl_percent = _btc_hl_percent;
+                    $("#btc_hl_percent").val(_btc_hl_percent);
                 }
             }
         });
