@@ -166,6 +166,7 @@
         let multiple = 0;
         let btc_hl_percent = 0;
         let interval = '05';
+        let audio_ctx;
 
         const zone = new Date().getTimezoneOffset() * 60 * 1000;
         const socket = io();
@@ -297,6 +298,7 @@
                 const ts = new Date(Date.now() - zone).toISOString().substring(11, 19);
                 const word = `${ts} ${symbol} ${_time}min 增长${_multiple}倍    ${_btc_24h}`;
                 $("#log").prepend(`<samp>${word}</samp>`);
+                alarm();
             }
         }
 
@@ -353,5 +355,51 @@
         });
 
         $("#log_clear").on('click', () => $("#log samp").remove());
+
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audio_ctx = new AudioContext();
+        }
+        catch (e) {
+            alert('你的浏览器不支持声音');
+        }
+
+        function alarm() {
+            // 当前频率
+            const frequency = 440.00;
+
+            // 创建一个OscillatorNode, 它表示一个周期性波形（振荡），基本上来说创造了一个音调
+            const oscillator = audio_ctx.createOscillator();
+
+            // 创建一个GainNode,它可以控制音频的总音量
+            const gainNode = audio_ctx.createGain();
+
+            // 把音量，音调和终节点进行关联
+            oscillator.connect(gainNode);
+
+            // audio_ctx.destination返回AudioDestinationNode对象，表示当前audio context中所有节点的最终节点，一般表示音频渲染设备
+            gainNode.connect(audio_ctx.destination);
+
+            // 指定音调的类型，其他还有square|triangle|sawtooth
+            oscillator.type = 'sine';
+
+            // 设置当前播放声音的频率，也就是最终播放声音的调调
+            oscillator.frequency.value = frequency;
+
+            // 当前时间设置音量为0
+            gainNode.gain.setValueAtTime(0, audio_ctx.currentTime);
+
+            // 0.01秒后音量为1
+            gainNode.gain.linearRampToValueAtTime(1, audio_ctx.currentTime + 0.01);
+
+            // 音调从当前时间开始播放
+            oscillator.start(audio_ctx.currentTime);
+
+            // 1秒内声音慢慢降低，是个不错的停止声音的方法
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audio_ctx.currentTime + 1);
+
+            // 1秒后完全停止声音
+            oscillator.stop(audio_ctx.currentTime + 1);
+        }
     });
 </script>
